@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Telegram Mini App — USDT → EUR Calculator",
   "private": true,
-  "type": "module",
   "engines": {
     "node": ">=18"
   },
