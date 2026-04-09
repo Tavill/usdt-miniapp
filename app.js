@@ -53,7 +53,7 @@ function showApp() {
   els.app.style.display = 'block';
 }
 async function getJSON(url, timeout) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(timeout || 7000) });
+   res = await fetch(url, { signal: AbortSignal.timeout(timeout || 7000) });
   if (!res.ok) throw new Error(res.status);
   return res.json();
 }
@@ -121,8 +121,8 @@ async function fetchRates() {
 
   if (usdtResult) {
     const rate = usdtResult.val;
-    const min  = Math.round(rate * 0.995 * 100) / 100;
-    const max  = Math.round(rate * 1.005 * 100) / 100;
+    const min  = Math.round(rate * 0.974 * 100) / 100;   // -2.6%
+const max  = Math.round(rate * 1.051 * 100) / 100;   // +5.1%
     state.p2pMin = min; state.p2pMax = max;
     els.p2pMin.value = min; els.p2pMax.value = max;
     setReadonly(els.p2pMin, true); setReadonly(els.p2pMax, true);
