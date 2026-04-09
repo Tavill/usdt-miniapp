@@ -1,26 +1,23 @@
 /**
- * USDT → EUR Калькулятор
- * Telegram Mini App — app.js
+ * USDT → EUR Калькулятор — app.js
  *
- * Курсы подтягиваются напрямую из браузера:
- *   USDT/KZT — CoinGecko (бесплатно, без ключа, CORS разрешён)
- *   EUR/KZT  — frankfurter.app (бесплатно, без ключа, CORS разрешён)
+ * Курсы загружаются из браузера напрямую.
+ * Несколько источников с автоматическим fallback:
+ *
+ * USDT/KZT:
+ *   1. open.er-api.com  (USD/KZT, USDT ≈ USD, бесплатно, без ключа)
+ *   2. CryptoCompare    (USDT/KZT, бесплатно, без ключа)
+ *
+ * EUR/KZT:
+ *   1. open.er-api.com  (EUR/KZT, бесплатно, без ключа)
+ *   2. frankfurter.app  (EUR/KZT, бесплатно, без ключа)
  */
 
-// ── Telegram SDK ──────────────────────────────────────────────
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
-// ── Состояние ─────────────────────────────────────────────────
-const state = {
-  p2pMin:      null,
-  p2pMax:      null,
-  bankRate:    null,
-  buffer:      3,
-  ratesLoading: false,
-};
+const state = { p2pMin: null, p2pMax: null, bankRate: null, buffer: 3, loading: false };
 
-// ── DOM ───────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const els = {
   loadingOverlay: $('loading-overlay'),
@@ -41,121 +38,128 @@ const els = {
   hintEmpty:      $('hint-empty'),
 };
 
-// ── Вспомогательные ──────────────────────────────────────────
-function formatTime(date) {
-  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-
+/* ── helpers ─────────────────────────────────────────────── */
 function setReadonly(input, on) {
   input.readOnly = on;
-  input.style.background   = on ? '' : 'var(--accent-light)';
-  input.style.borderColor  = on ? '' : 'var(--accent)';
+  input.style.background  = on ? '' : 'var(--accent-light)';
+  input.style.borderColor = on ? '' : 'var(--accent)';
 }
-
+function showWarning(text) {
+  els.ratesWarning.textContent   = text || '';
+  els.ratesWarning.style.display = text ? 'block' : 'none';
+}
 function showApp() {
   els.loadingOverlay.style.display = 'none';
   els.app.style.display = 'block';
 }
+async function getJSON(url, timeout) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(timeout || 7000) });
+  if (!res.ok) throw new Error(res.status);
+  return res.json();
+}
 
-function showWarning(text) {
-  if (text) {
-    els.ratesWarning.textContent = text;
-    els.ratesWarning.style.display = 'block';
-  } else {
-    els.ratesWarning.style.display = 'none';
+/* ── источники USDT/KZT ──────────────────────────────────── */
+async function usdtKztFromOpenER() {
+  // Один запрос — берём и USD/KZT и EUR/KZT сразу
+  const d = await getJSON('https://open.er-api.com/v6/latest/USD');
+  if (!d.rates?.KZT) throw new Error('no KZT');
+  return d.rates.KZT;           // USD/KZT ≈ USDT/KZT
+}
+
+async function usdtKztFromCryptoCompare() {
+  const d = await getJSON('https://min-api.cryptocompare.com/data/price?fsym=USDT&tsyms=KZT');
+  if (!d.KZT) throw new Error('no KZT');
+  return d.KZT;
+}
+
+/* ── источники EUR/KZT ───────────────────────────────────── */
+async function eurKztFromOpenER() {
+  const d = await getJSON('https://open.er-api.com/v6/latest/EUR');
+  if (!d.rates?.KZT) throw new Error('no KZT');
+  return d.rates.KZT;
+}
+
+async function eurKztFromFrankfurter() {
+  const d = await getJSON('https://api.frankfurter.app/latest?from=EUR&to=KZT');
+  if (!d.rates?.KZT) throw new Error('no KZT');
+  return d.rates.KZT;
+}
+
+/* ── получить курс, перебирая источники ──────────────────── */
+async function tryAll(label, sources) {
+  for (const { fn, name } of sources) {
+    try {
+      const val = await fn();
+      console.log(label + ' OK: ' + name + ' = ' + val);
+      return { val, name };
+    } catch(e) {
+      console.warn(label + ' fail: ' + name, e.message);
+    }
   }
+  return null;
 }
 
-// ── Получить USDT/KZT с CoinGecko ────────────────────────────
-async function fetchUSDT_KZT() {
-  const res = await fetch(
-    'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=kzt',
-    { signal: AbortSignal.timeout(8000) }
-  );
-  if (!res.ok) throw new Error('CoinGecko ' + res.status);
-  const data = await res.json();
-  const rate = data?.tether?.kzt;
-  if (!rate || rate <= 0) throw new Error('CoinGecko: нет данных');
-  return {
-    min: Math.round(rate * 0.995 * 100) / 100,
-    max: Math.round(rate * 1.005 * 100) / 100,
-    source: 'CoinGecko',
-  };
-}
-
-// ── Получить EUR/KZT с Frankfurter ───────────────────────────
-async function fetchEUR_KZT() {
-  const res = await fetch(
-    'https://api.frankfurter.app/latest?from=EUR&to=KZT',
-    { signal: AbortSignal.timeout(8000) }
-  );
-  if (!res.ok) throw new Error('Frankfurter ' + res.status);
-  const data = await res.json();
-  const rate = data?.rates?.KZT;
-  if (!rate || rate <= 0) throw new Error('Frankfurter: нет данных');
-  return { rate, source: 'Frankfurter' };
-}
-
-// ── Загрузить курсы ──────────────────────────────────────────
+/* ── основная загрузка ───────────────────────────────────── */
 async function fetchRates() {
-  if (state.ratesLoading) return;
-  state.ratesLoading = true;
+  if (state.loading) return;
+  state.loading = true;
   els.refreshBtn.classList.add('spinning');
   els.refreshBtn.disabled = true;
 
-  const warnings = [];
-
-  const [usdtRes, eurRes] = await Promise.allSettled([
-    fetchUSDT_KZT(),
-    fetchEUR_KZT(),
+  const [usdtResult, eurResult] = await Promise.all([
+    tryAll('USDT/KZT', [
+      { fn: usdtKztFromOpenER,        name: 'ExchangeRate (USD)' },
+      { fn: usdtKztFromCryptoCompare, name: 'CryptoCompare'      },
+    ]),
+    tryAll('EUR/KZT', [
+      { fn: eurKztFromOpenER,      name: 'ExchangeRate (EUR)' },
+      { fn: eurKztFromFrankfurter, name: 'Frankfurter'        },
+    ]),
   ]);
 
-  // USDT/KZT
-  if (usdtRes.status === 'fulfilled') {
-    const { min, max, source } = usdtRes.value;
-    state.p2pMin = min;
-    state.p2pMax = max;
-    els.p2pMin.value = min;
-    els.p2pMax.value = max;
-    setReadonly(els.p2pMin, true);
-    setReadonly(els.p2pMax, true);
-    els.p2pSource.textContent = 'Источник: ' + source;
+  const warnings = [];
+
+  if (usdtResult) {
+    const rate = usdtResult.val;
+    const min  = Math.round(rate * 0.995 * 100) / 100;
+    const max  = Math.round(rate * 1.005 * 100) / 100;
+    state.p2pMin = min; state.p2pMax = max;
+    els.p2pMin.value = min; els.p2pMax.value = max;
+    setReadonly(els.p2pMin, true); setReadonly(els.p2pMax, true);
+    els.p2pSource.textContent = 'Источник: ' + usdtResult.name;
   } else {
-    console.error('USDT/KZT:', usdtRes.reason);
-    setReadonly(els.p2pMin, false);
-    setReadonly(els.p2pMax, false);
+    setReadonly(els.p2pMin, false); setReadonly(els.p2pMax, false);
     els.p2pSource.textContent = '';
     warnings.push('Курс USDT/KZT недоступен — введите вручную');
   }
 
-  // EUR/KZT
-  if (eurRes.status === 'fulfilled') {
-    const { rate, source } = eurRes.value;
-    state.bankRate = rate;
-    els.bankRate.value = rate;
+  if (eurResult) {
+    state.bankRate = eurResult.val;
+    els.bankRate.value = eurResult.val;
     setReadonly(els.bankRate, true);
-    els.bankSource.textContent = 'Источник: ' + source;
+    els.bankSource.textContent = 'Источник: ' + eurResult.name;
   } else {
-    console.error('EUR/KZT:', eurRes.reason);
     setReadonly(els.bankRate, false);
     els.bankSource.textContent = '';
     warnings.push('Курс EUR/KZT недоступен — введите вручную');
   }
 
-  if (usdtRes.status === 'fulfilled' || eurRes.status === 'fulfilled') {
-    els.updatedAt.textContent = 'Обновлено: ' + formatTime(new Date());
+  if (usdtResult || eurResult) {
+    const t = new Date();
+    els.updatedAt.textContent = 'Обновлено: ' +
+      t.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
   showWarning(warnings.join(' · '));
   recalculate();
 
-  state.ratesLoading = false;
+  state.loading = false;
   els.refreshBtn.classList.remove('spinning');
   els.refreshBtn.disabled = false;
   showApp();
 }
 
-// ── Расчёт ───────────────────────────────────────────────────
+/* ── расчёт ─────────────────────────────────────────────── */
 function recalculate() {
   const eur    = parseFloat(els.eurInput.value);
   const p2pMin = parseFloat(els.p2pMin.value);
@@ -168,38 +172,36 @@ function recalculate() {
     els.hintEmpty.style.display = 'block';
     return;
   }
-  if (isNaN(p2pMin) || isNaN(p2pMax) || isNaN(bank) || p2pMin <= 0 || p2pMax <= 0 || bank <= 0) {
+  if ([p2pMin, p2pMax, bank].some(v => !v || v <= 0 || isNaN(v))) {
     els.resultBlock.style.display = 'none';
     els.hintEmpty.style.display = 'none';
     return;
   }
 
-  const kztNeeded  = eur * bank;
-  const usdtWorst  = kztNeeded / p2pMin;
-  const usdtBest   = kztNeeded / p2pMax;
-  const usdtAvg    = kztNeeded / ((p2pMin + p2pMax) / 2);
-  const usdtResult = Math.ceil(usdtWorst * (1 + buf / 100));
+  const kzt        = eur * bank;
+  const worst      = kzt / p2pMin;
+  const best       = kzt / p2pMax;
+  const avg        = kzt / ((p2pMin + p2pMax) / 2);
+  const result     = Math.ceil(worst * (1 + buf / 100));
 
   els.resultBlock.style.display = 'block';
-  els.hintEmpty.style.display = 'none';
-  els.resultUsdt.textContent = usdtResult.toLocaleString('ru-RU');
+  els.hintEmpty.style.display   = 'none';
+  els.resultUsdt.textContent = result.toLocaleString('ru-RU');
+
+  const row = (label, val) =>
+    '<div class="detail-item"><span class="detail-label">' + label +
+    '</span><span class="detail-value">' + val + '</span></div>';
 
   els.resultDetails.innerHTML =
-    '<div class="detail-item"><span class="detail-label">Нужно KZT</span>' +
-    '<span class="detail-value">' + Math.ceil(kztNeeded).toLocaleString('ru-RU') + ' ₸</span></div>' +
-    '<div class="detail-item"><span class="detail-label">По мин. P2P</span>' +
-    '<span class="detail-value">' + usdtWorst.toFixed(2) + ' USDT</span></div>' +
-    '<div class="detail-item"><span class="detail-label">По макс. P2P</span>' +
-    '<span class="detail-value">' + usdtBest.toFixed(2) + ' USDT</span></div>' +
-    '<div class="detail-item"><span class="detail-label">Среднее</span>' +
-    '<span class="detail-value">' + usdtAvg.toFixed(2) + ' USDT</span></div>' +
-    '<div class="detail-item"><span class="detail-label">Буфер ' + buf + '%</span>' +
-    '<span class="detail-value">+' + (usdtWorst * buf / 100).toFixed(2) + ' USDT</span></div>' +
-    '<div class="detail-item"><span class="detail-label">Курс банка</span>' +
-    '<span class="detail-value">' + bank.toLocaleString('ru-RU') + ' ₸/€</span></div>';
+    row('Нужно KZT',       Math.ceil(kzt).toLocaleString('ru-RU') + ' ₸') +
+    row('По мин. P2P',     worst.toFixed(2) + ' USDT') +
+    row('По макс. P2P',    best.toFixed(2)  + ' USDT') +
+    row('Среднее',         avg.toFixed(2)   + ' USDT') +
+    row('Буфер ' + buf + '%', '+' + (worst * buf / 100).toFixed(2) + ' USDT') +
+    row('Курс банка',      bank.toLocaleString('ru-RU') + ' ₸/€');
 }
 
-// ── Обработчики событий ───────────────────────────────────────
+/* ── события ────────────────────────────────────────────── */
 els.bufferButtons.querySelectorAll('.buf-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     els.bufferButtons.querySelectorAll('.buf-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -211,9 +213,9 @@ els.bufferButtons.querySelectorAll('.buf-btn').forEach(function(btn) {
 
 els.eurInput.addEventListener('input', recalculate);
 els.refreshBtn.addEventListener('click', fetchRates);
-els.p2pMin.addEventListener('input', recalculate);
-els.p2pMax.addEventListener('input', recalculate);
-els.bankRate.addEventListener('input', recalculate);
+[els.p2pMin, els.p2pMax, els.bankRate].forEach(function(el) {
+  el.addEventListener('input', recalculate);
+});
 
-// ── Старт ─────────────────────────────────────────────────────
+/* ── старт ──────────────────────────────────────────────── */
 fetchRates();
