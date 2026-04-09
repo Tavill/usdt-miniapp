@@ -4,6 +4,10 @@
     {
       "src": "api/rates.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "*.{html,css,js}",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -12,8 +16,16 @@
       "dest": "/api/rates.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/style.css",
+      "dest": "/style.css"
+    },
+    {
+      "src": "/app.js",
+      "dest": "/app.js"
     }
   ],
   "headers": [
