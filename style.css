@@ -1,0 +1,413 @@
+/* ==========================================
+   USDT → EUR Калькулятор — стили
+   Telegram Mini App
+   ========================================== */
+
+:root {
+  --bg: #f4f4f6;
+  --card-bg: #ffffff;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --error: #dc2626;
+  --result-bg: #1e3a5f;
+  --result-text: #ffffff;
+  --buf-active-bg: #2563eb;
+  --buf-active-text: #ffffff;
+  --buf-bg: #f3f4f6;
+  --buf-text: #374151;
+  --input-bg: #f9fafb;
+  --input-border: #d1d5db;
+  --input-focus: #2563eb;
+  --spinner-color: #2563eb;
+}
+
+/* Тёмная тема Telegram */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: var(--tg-theme-bg-color, #1c1c1e);
+    --card-bg: var(--tg-theme-secondary-bg-color, #2c2c2e);
+    --text-primary: var(--tg-theme-text-color, #f2f2f7);
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --border: #3f3f46;
+    --accent: #60a5fa;
+    --accent-light: #1e3a5f;
+    --buf-bg: #3f3f46;
+    --buf-text: #e4e4e7;
+    --input-bg: #3f3f46;
+    --input-border: #52525b;
+  }
+}
+
+/* Telegram CSS-переменные (если приложение открыто в Telegram) */
+body {
+  background-color: var(--tg-theme-bg-color, var(--bg));
+  color: var(--tg-theme-text-color, var(--text-primary));
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  background-color: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========== Контейнер ========== */
+.container {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 12px 12px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ========== Карточка ========== */
+.card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.card-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+/* ========== Кнопка обновления ========== */
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+
+.refresh-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.refresh-btn:active {
+  transform: scale(0.97);
+}
+
+.refresh-btn.spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ========== Предупреждение ========== */
+.warning-banner {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--warning);
+  margin-bottom: 12px;
+}
+
+/* ========== Сетка курсов ========== */
+.rates-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rate-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rate-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rate-value-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rate-input {
+  width: 120px;
+  padding: 8px 10px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -moz-appearance: textfield;
+}
+
+.rate-input::-webkit-outer-spin-button,
+.rate-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.rate-input:focus {
+  outline: none;
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.rate-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rate-input-full {
+  width: 100%;
+  flex: 1;
+}
+
+.rate-dash {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.rate-source {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ========== Время обновления ========== */
+.updated-at {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 12px;
+  text-align: right;
+}
+
+/* ========== Ввод EUR ========== */
+.input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  margin-top: 14px;
+}
+
+.input-label:first-child {
+  margin-top: 0;
+}
+
+.eur-input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.eur-input {
+  width: 100%;
+  padding: 12px 44px 12px 14px;
+  font-size: 22px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--input-bg);
+  border: 1.5px solid var(--input-border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -moz-appearance: textfield;
+}
+
+.eur-input::-webkit-outer-spin-button,
+.eur-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.eur-input:focus {
+  outline: none;
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.currency-badge {
+  position: absolute;
+  right: 14px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* ========== Буфер ========== */
+.buffer-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 0;
+}
+
+.buf-btn {
+  flex: 1;
+  min-width: 44px;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--buf-bg);
+  color: var(--buf-text);
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.buf-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.buf-btn.active {
+  background: var(--buf-active-bg);
+  color: var(--buf-active-text);
+  border-color: var(--buf-active-bg);
+}
+
+/* ========== Блок результата ========== */
+.result-card {
+  background: var(--result-bg);
+  color: var(--result-text);
+}
+
+.result-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 16px;
+  gap: 2px;
+}
+
+.result-label {
+  font-size: 13px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.result-value {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.result-currency {
+  font-size: 18px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.result-details {
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: 11px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ========== Подсказка ========== */
+.hint {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 8px;
+}
+
+/* ========== Оверлей загрузки ========== */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 100;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--spinner-color);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.loading-text {
+  font-size: 15px;
+  color: var(--text-secondary);
+}

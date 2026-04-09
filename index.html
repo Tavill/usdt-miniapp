@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>USDT → EUR Калькулятор</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <!-- Загрузка курсов -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p class="loading-text">Получаем курсы…</p>
+  </div>
+
+  <div class="container" id="app" style="display:none;">
+
+    <!-- Блок курсов -->
+    <section class="card" id="rates-block">
+      <div class="card-header">
+        <span class="card-title">Актуальные курсы</span>
+        <button class="refresh-btn" id="refresh-btn" title="Обновить курсы">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Обновить
+        </button>
+      </div>
+
+      <div id="rates-warning" class="warning-banner" style="display:none;"></div>
+
+      <div class="rates-grid">
+        <div class="rate-item">
+          <span class="rate-label">P2P вилка (KZT/USDT)</span>
+          <div class="rate-value-row">
+            <input type="number" class="rate-input" id="p2p-min" placeholder="мин" />
+            <span class="rate-dash">—</span>
+            <input type="number" class="rate-input" id="p2p-max" placeholder="макс" />
+          </div>
+          <span class="rate-source" id="p2p-source"></span>
+        </div>
+        <div class="rate-item">
+          <span class="rate-label">Курс банка (KZT/EUR)</span>
+          <div class="rate-value-row">
+            <input type="number" class="rate-input rate-input-full" id="bank-rate" placeholder="курс покупки EUR" />
+          </div>
+          <span class="rate-source" id="bank-source"></span>
+        </div>
+      </div>
+
+      <div class="updated-at" id="updated-at">—</div>
+    </section>
+
+    <!-- Блок ввода -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-title">Расчёт</span>
+      </div>
+
+      <label class="input-label" for="eur-input">Нужно получить, EUR</label>
+      <div class="eur-input-row">
+        <input
+          type="number"
+          id="eur-input"
+          class="eur-input"
+          placeholder="Введите сумму"
+          min="0"
+          step="1"
+        />
+        <span class="currency-badge">€</span>
+      </div>
+
+      <label class="input-label">Буфер безопасности</label>
+      <div class="buffer-buttons" id="buffer-buttons">
+        <button class="buf-btn" data-value="0">0%</button>
+        <button class="buf-btn active" data-value="3">+3%</button>
+        <button class="buf-btn" data-value="5">+5%</button>
+        <button class="buf-btn" data-value="7">+7%</button>
+        <button class="buf-btn" data-value="10">+10%</button>
+      </div>
+    </section>
+
+    <!-- Блок результата -->
+    <section class="card result-card" id="result-block" style="display:none;">
+      <div class="result-main">
+        <span class="result-label">Выставить счёт</span>
+        <span class="result-value" id="result-usdt">—</span>
+        <span class="result-currency">USDT</span>
+      </div>
+      <div class="result-details" id="result-details"></div>
+    </section>
+
+    <div class="hint" id="hint-empty" style="display:none;">Введите сумму в EUR для расчёта</div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
